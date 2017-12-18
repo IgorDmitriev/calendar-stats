@@ -26,6 +26,7 @@ class App extends Component {
 
     this.state = {
       events: [],
+      calendars: [],
     };
   }
 
@@ -41,25 +42,42 @@ class App extends Component {
       profile: profileObj,
     });
 
-    this.listUpcomingEvents();
+    // this.getCalendars();
+    this.getCalendarEvents('primary');
   }
 
-  listUpcomingEvents() {
+  getCalendars() {
+    calendar.calendarList.list({}, (err, response) =>
+      this.setState({ calendars: response.items }),
+    );
+  }
+
+  getCalendarEvents(calendarId, nextPageToken) {
     console.log('fetching calendar');
+    const { events } = this.state;
+
     calendar.events.list(
       {
-        calendarId: 'primary',
-        timeMin: new Date().toISOString(),
+        calendarId,
+        timeMin: new Date('2017-1-1').toISOString(),
+        timeMax: new Date('2018-1-1').toISOString(),
         showDeleted: false,
         singleEvents: true,
         orderBy: 'startTime',
+        pageToken: nextPageToken,
       },
-      (err, response) => this.setState({ events: response }),
+      (err, response) => {
+        this.setState({ events: [...events, ...response.items] }, () => {
+          if (response.nextPageToken === undefined) return;
+          this.getCalendarEvents(calendarId, response.nextPageToken);
+        });
+      },
     );
   }
 
   render() {
     console.log(this.state);
+    window.state = this.state;
     return (
       <div className="App">
         <GoogleLogin
@@ -70,6 +88,7 @@ class App extends Component {
           offline={false}
           approvalPrompt="force"
         />
+        <h3>{this.state.events.length}</h3>
       </div>
     );
   }
