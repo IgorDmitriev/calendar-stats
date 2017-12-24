@@ -1,7 +1,11 @@
 import React, { Component } from 'react';
+import 'normalize.css';
 import './App.css';
 import GoogleLogin from 'react-google-login';
 import google from 'googleapis';
+import _ from 'lodash';
+import List from './List';
+import { topBySummary, topAttendees } from './eventsSelectors';
 
 const CLIENT_ID =
   '1034471881815-lv7d5vaepq8a1eujbbfo831r6a8dgqbc.apps.googleusercontent.com';
@@ -13,13 +17,6 @@ const OAuth2 = google.auth.OAuth2;
 const oauth2Client = new OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
 const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-const stateIsChanged = (prevState, state, key, value) => {
-  const isChanged = prevState[key] !== state[key];
-  if (value === undefined) return isChanged;
-
-  return state[key] === value;
-};
-
 class App extends Component {
   constructor(props) {
     super(props);
@@ -27,15 +24,14 @@ class App extends Component {
     this.state = {
       events: [],
       calendars: [],
+      profile: {},
     };
   }
 
   onLoginSuccess({ accessToken, profileObj }) {
-    console.log(oauth2Client);
     oauth2Client.credentials = {
       access_token: accessToken,
     };
-    console.log(oauth2Client);
 
     this.setState({
       accessToken: accessToken,
@@ -65,6 +61,7 @@ class App extends Component {
         singleEvents: true,
         orderBy: 'startTime',
         pageToken: nextPageToken,
+        maxResults: 2500,
       },
       (err, response) => {
         this.setState({ events: [...events, ...response.items] }, () => {
@@ -76,8 +73,10 @@ class App extends Component {
   }
 
   render() {
-    console.log(this.state);
     window.state = this.state;
+    const { events, profile: { email } } = this.state;
+    console.log(topBySummary(events));
+
     return (
       <div className="App">
         <GoogleLogin
@@ -88,7 +87,14 @@ class App extends Component {
           offline={false}
           approvalPrompt="force"
         />
-        <h3>{this.state.events.length}</h3>
+        <h3>{email && `${email}: ${events.length} events`}</h3>
+        <section className="stats">
+          <List title="Popular events" items={topBySummary(events)} />
+          <List
+            title="Top meeting participants"
+            items={topAttendees(events, email)}
+          />
+        </section>
       </div>
     );
   }
