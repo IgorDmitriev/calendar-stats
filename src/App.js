@@ -5,7 +5,13 @@ import GoogleLogin from 'react-google-login';
 import google from 'googleapis';
 import _ from 'lodash';
 import List from './List';
-import { topBySummary, topAttendees } from './eventsSelectors';
+import {
+  topBySummary,
+  topAttendees,
+  countByDate,
+  topByLocation,
+  countByDuration,
+} from './eventsSelectors';
 
 const CLIENT_ID =
   '1034471881815-lv7d5vaepq8a1eujbbfo831r6a8dgqbc.apps.googleusercontent.com';
@@ -79,14 +85,17 @@ class App extends Component {
 
     return (
       <div className="App">
-        <GoogleLogin
-          clientId={CLIENT_ID}
-          scope={SCOPES}
-          buttonText="Login"
-          onSuccess={response => this.onLoginSuccess(response)}
-          offline={false}
-          approvalPrompt="force"
-        />
+        <h1>2017 in your calendar</h1>
+        {email === undefined && (
+          <GoogleLogin
+            clientId={CLIENT_ID}
+            scope={SCOPES}
+            buttonText="Connect google calendar"
+            onSuccess={response => this.onLoginSuccess(response)}
+            offline={false}
+            approvalPrompt="force"
+          />
+        )}
         <h3>{email && `${email}: ${events.length} events`}</h3>
         <section className="stats">
           <List title="Popular events" items={topBySummary(events)} />
@@ -94,6 +103,10 @@ class App extends Component {
             title="Top meeting participants"
             items={topAttendees(events, email)}
           />
+          <List title="Count By Month" items={countByDate(events, 'MMMM')} />
+          <List title="Count By WeekDay" items={countByDate(events, 'dddd')} />
+          <List title="Top By Location" items={topByLocation(events)} />
+          <List title="Top By Duration" items={countByDuration(events)} />
         </section>
       </div>
     );
