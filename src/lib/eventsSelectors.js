@@ -3,102 +3,125 @@ import moment from 'moment';
 
 const getValue = value => (_.isArray(value) ? value.length : value);
 
-const mapObjectToListItems = (value, key) => ({
-  label: key,
-  value: getValue(value),
+const objectToListItem = (value, key) => ({
+	label: key,
+	value: getValue(value),
 });
 
 const sortItemsDesc = (a, b) => b.value - a.value;
 
 const sortDates = format => (a, b) =>
-  moment(a.label, format).unix() - moment(b.label, format).unix();
+	moment(a.label, format).unix() - moment(b.label, format).unix();
 
 const getEventDuration = ({ start, end }) =>
-  moment(end.dateTime).diff(start.dateTime, 'minutes');
+	moment(end.dateTime).diff(start.dateTime, 'minutes');
 
 export const totalDuration = (events = []) =>
-  events.reduce((acc, event) => acc + getEventDuration(event), 0);
+	events.reduce((acc, event) => acc + getEventDuration(event), 0);
 
 export const countUniqAttendees = (events = []) => {
-  const attendeesEmails = new Set();
+	const attendeesEmails = new Set();
 
-  events.forEach(event => {
-    if (event.attendees === undefined) return;
+	events.forEach(event => {
+		if (event.attendees === undefined) return;
 
-    event.attendees.forEach(({ email }) => attendeesEmails.add(email));
-  });
+		event.attendees.forEach(({ email, self }) => {
+			if (self === undefined) attendeesEmails.add(email);
+		});
+	});
 
-  return attendeesEmails.size;
+	return attendeesEmails.size;
 };
 
 export const topBySummary = (events, limit = 10) => {
-  const groupedBySummary = _.groupBy(events, 'summary');
-  const sortedItems = _.map(groupedBySummary, mapObjectToListItems).sort(
-    sortItemsDesc,
-  );
+	const groupedBySummary = _.groupBy(
+		events,
+		({ summary }) => summary || 'Private/Busy',
+	);
+	const sortedItems = _.map(groupedBySummary, objectToListItem).sort(
+		sortItemsDesc,
+	);
 
-  return sortedItems.slice(0, limit);
+	return sortedItems.slice(0, limit);
 };
 
 export const topBySummaryDuration = (events, limit = 10) =>
-  _.map(_.groupBy(events, 'summary'), (groupedEvents, summary) => ({
-    label: summary,
-    value: _.sumBy(groupedEvents, getEventDuration),
-  }))
-    .sort(sortItemsDesc)
-    .slice(0, limit);
+	_.map(
+		_.groupBy(events, ({ summary }) => summary || 'Private/Busy'),
+		(groupedEvents, summary) => ({
+			label: summary,
+			value: _.sumBy(groupedEvents, getEventDuration),
+		}),
+	)
+		.sort(sortItemsDesc)
+		.slice(0, limit);
 
 export const topByLocation = (events, limit = 10) => {
-  const groupedBySummary = _.groupBy(events, 'location');
-  delete groupedBySummary['undefined'];
-  const sortedItems = _.map(groupedBySummary, mapObjectToListItems).sort(
-    sortItemsDesc,
-  );
+	const eventsWithLocation = events.filter(({ location }) =>
+		Boolean(location),
+	);
+	const groupedByLocation = _.groupBy(eventsWithLocation, 'location');
 
-  return sortedItems.slice(0, limit);
+	return _.map(groupedByLocation, objectToListItem)
+		.sort(sortItemsDesc)
+		.slice(0, limit);
 };
 
-export const topAttendees = (events, userEmail, limit = 10) =>
-  _.map(
-    _.groupBy(_.flatten(_.compact(_.map(events, 'attendees'))), 'email'),
-    mapObjectToListItems,
-  )
-    .filter(({ label }) => label !== userEmail)
-    .sort(sortItemsDesc)
-    .slice(0, limit);
+export const topAttendees = (events, limit = 10) => {
+	const attendeesCount = {};
 
-export const topByAttendeeDuration = (events, userEmail, limit = 10) => {
-  const attendeesDuration = {};
+	events.forEach(({ attendees }) => {
+		if (attendees === undefined) return;
 
-  events.forEach(event => {
-    if (event.attendees === undefined) return;
-    const eventDuration = getEventDuration(event);
+		attendees.forEach(({ email, self }) => {
+			if (self) return;
 
-    event.attendees.forEach(({ email }) => {
-      if (email === userEmail) return;
+			if (attendeesCount[email]) {
+				attendeesCount[email] += 1;
+			} else {
+				attendeesCount[email] = 1;
+			}
+		});
+	});
 
-      if (attendeesDuration[email] === undefined) {
-        attendeesDuration[email] = eventDuration;
-      } else {
-        attendeesDuration[email] += eventDuration;
-      }
-    });
-  });
+	return _.map(attendeesCount, objectToListItem)
+		.sort(sortItemsDesc)
+		.slice(0, limit);
+};
 
-  return _.map(attendeesDuration, mapObjectToListItems)
-    .sort(sortItemsDesc)
-    .slice(0, limit);
+export const topByAttendeeDuration = (events, limit = 10) => {
+	const attendeesDuration = {};
+
+	events.forEach(event => {
+		if (event.attendees === undefined) return;
+
+		const eventDuration = getEventDuration(event);
+
+		event.attendees.forEach(({ email, self }) => {
+			if (self) return;
+
+			if (attendeesDuration[email] === undefined) {
+				attendeesDuration[email] = eventDuration;
+			} else {
+				attendeesDuration[email] += eventDuration;
+			}
+		});
+	});
+
+	return _.map(attendeesDuration, objectToListItem)
+		.sort(sortItemsDesc)
+		.slice(0, limit);
 };
 
 export const countByDate = (events, format) =>
-  _.map(
-    _.groupBy(events, ({ start: { dateTime } }) =>
-      moment(dateTime).format(format),
-    ),
-    mapObjectToListItems,
-  ).sort(sortDates(format));
+	_.map(
+		_.groupBy(events, ({ start: { dateTime } }) =>
+			moment(dateTime).format(format),
+		),
+		objectToListItem,
+	).sort(sortDates(format));
 
-export const countByDuration = (events, limit = 5) =>
-  _.map(_.groupBy(events, getEventDuration), mapObjectToListItems)
-    .sort(sortItemsDesc)
-    .slice(0, limit);
+export const countByDuration = (events, limit = 10) =>
+	_.map(_.groupBy(events, getEventDuration), objectToListItem)
+		.sort(sortItemsDesc)
+		.slice(0, limit);

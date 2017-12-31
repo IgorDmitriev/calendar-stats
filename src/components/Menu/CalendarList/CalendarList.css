@@ -1,0 +1,12 @@
+.CalendarList {
+  margin: 20px 0;
+  border-top: 1px solid #3c4250;
+}
+
+.CalendarList > header {
+  font-size: 12px;
+  color: #ddd;
+  width: 100%;
+  margin: 20px 0;
+  letter-spacing: 0.5px;
+}

@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import google from 'googleapis';
-import flatten from 'lodash/flatten';
 
 import { oauth2Client } from '../lib/googleClient';
+import { arrayToObject } from '../lib/helpers';
 
 import Dashboard from './Dashboard';
 import Menu from './Menu';
@@ -18,13 +18,14 @@ class App extends Component {
     this.state = {
       accessToken: null,
       events: {},
-      calendars: [],
+      calendars: {},
     };
 
     this.setAccessToken = this.setAccessToken.bind(this);
     this.toggleCalendar = this.toggleCalendar.bind(this);
     this.fetchEvents = this.fetchEvents.bind(this);
     this.fetchEventsForCalendar = this.fetchEventsForCalendar.bind(this);
+    this.setCalendarFetchError = this.setCalendarFetchError.bind(this);
   }
 
   setAccessToken(accessToken) {
@@ -46,16 +47,14 @@ class App extends Component {
   }
 
   fetchEvents() {
-    console.log(this.getSelectedCalendarIds());
     this.getSelectedCalendarIds().forEach(calendarId =>
       this.fetchEventsForCalendar(calendarId, ''),
     );
   }
 
   fetchEventsForCalendar(calendarId, nextPageToken) {
-    console.log(`fetching calendar ${calendarId}`);
-
     if (nextPageToken === undefined) return;
+    console.log(`fetching calendar ${calendarId}`);
 
     calendar.events.list(
       {
@@ -69,14 +68,36 @@ class App extends Component {
         maxResults: 2500,
       },
       (err, response) => {
-        console.log(err, response);
-        this.receiveEvents(response.items, calendarId, response.nextPageToken);
+        if (err) {
+          this.setCalendarFetchError(calendarId);
+        } else {
+          this.receiveEvents(
+            response.items,
+            calendarId,
+            response.nextPageToken,
+          );
+        }
       },
     );
   }
 
+  setCalendarFetchError(calendarId) {
+    const { calendars } = this.state;
+    const calendar = calendars[calendarId];
+
+    this.setState({
+      calendars: {
+        ...calendars,
+        [calendarId]: {
+          ...calendar,
+          fetchError: true,
+        },
+      },
+    });
+  }
+
   receiveCalendars(calendars) {
-    this.setState({ calendars }, this.fetchEvents);
+    this.setState({ calendars: arrayToObject(calendars) }, this.fetchEvents);
   }
 
   receiveEvents(newEvents, calendarId, nextPageToken) {
@@ -102,16 +123,45 @@ class App extends Component {
 
   getSelectedCalendarIds() {
     const { calendars } = this.state;
-    return calendars.filter(({ selected }) => selected).map(({ id }) => id);
+
+    return Object.values(calendars)
+      .filter(({ selected }) => selected)
+      .map(({ id }) => id);
   }
 
   getEvents() {
     const { events } = this.state;
-    return flatten(Object.values(events));
+    const selectedCalendars = this.getSelectedCalendarIds();
+    let selectedEvents = [];
+
+    selectedCalendars.forEach(
+      calendarId =>
+        (selectedEvents = selectedEvents.concat(events[calendarId] || [])),
+    );
+
+    return selectedEvents;
   }
 
-  toggleCalendar() {
-    return null;
+  toggleCalendar(calendarId) {
+    console.log('toggle', calendarId);
+    const { calendars, events } = this.state;
+
+    this.setState(
+      {
+        calendars: {
+          ...calendars,
+          [calendarId]: {
+            ...calendars[calendarId],
+            selected: !Boolean(calendars[calendarId].selected),
+          },
+        },
+      },
+      () => {
+        if (events[calendarId] !== undefined) return;
+
+        this.fetchEventsForCalendar(calendarId, '');
+      },
+    );
   }
 
   render() {
@@ -120,9 +170,8 @@ class App extends Component {
 
     return (
       <div className="App">
-        <h1>2017 in your calendar</h1>
         <Menu
-          calendars={calendars}
+          calendars={Object.values(calendars)}
           selectedCalendars={this.getSelectedCalendarIds()}
           setAccessToken={this.setAccessToken}
           toggleCalendar={this.toggleCalendar}

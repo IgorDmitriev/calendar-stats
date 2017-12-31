@@ -1,0 +1,13 @@
+.Total {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.Total > .label {
+	font-size: 14px;
+}
+
+.Total > .value {
+	font-size: 36px;
+}

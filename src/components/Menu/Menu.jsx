@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import Profile from './Profile';
 import Signin from './Signin';
 import CalendarList from './CalendarList';
+import './Menu.css';
 
 class Menu extends Component {
   constructor(props) {
@@ -29,16 +30,19 @@ class Menu extends Component {
 
   render() {
     const { profile } = this.state;
-
-    if (profile === null)
-      return <Signin onLoginSuccess={this.onLoginSuccess} />;
-
-    const { calendars } = this.props;
+    const { calendars, toggleCalendar } = this.props;
 
     return (
       <div className="Menu">
-        <Profile {...profile} />
-        <CalendarList calendars={calendars} />
+        {profile === null ? (
+          <Signin onLoginSuccess={this.onLoginSuccess} />
+        ) : (
+          <Profile {...profile} />
+        )}
+        <CalendarList
+          calendars={calendars}
+          onCalendarListItemClick={toggleCalendar}
+        />
       </div>
     );
   }

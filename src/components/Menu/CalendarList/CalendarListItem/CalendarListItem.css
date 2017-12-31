@@ -1,0 +1,29 @@
+.CalendarListItem {
+	display: flex;
+	flex-direction: row;
+	cursor: pointer;
+	font-size: 14px;
+	position: relative;
+}
+
+.CalendarListItem + .CalendarListItem {
+	margin-top: 20px;
+}
+
+.select-box {
+	width: 15px;
+	height: 15px;
+	border-radius: 2px;
+}
+
+.CalendarListItem > span {
+	margin-left: 10px;
+	width: 160px;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	letter-spacing: 0.5px;
+}
+
+.CalendarListItem > .error {
+}

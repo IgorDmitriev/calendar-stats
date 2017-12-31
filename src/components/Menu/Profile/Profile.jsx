@@ -1,5 +1,11 @@
 import React from 'react';
+import './Profile.css';
 
-const Profile = ({ email }) => <div className="Profile">{email}</div>;
+const Profile = ({ name, imageUrl }) => (
+  <div className="Profile">
+    <img src={imageUrl} />
+    <span>{name}</span>
+  </div>
+);
 
 export default Profile;
