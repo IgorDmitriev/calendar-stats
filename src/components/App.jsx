@@ -7,46 +7,36 @@ import Menu from './Menu';
 import './App.css';
 
 class App extends Component {
-	constructor(props) {
-		super(props);
+	state = {
+		accessToken: null,
+		events: {},
+		calendars: {},
+	};
 
-		this.state = {
-			accessToken: null,
-			events: {},
-			calendars: {},
-		};
-
-		this.setAccessToken = this.setAccessToken.bind(this);
-		this.toggleCalendar = this.toggleCalendar.bind(this);
-		this.fetchEvents = this.fetchEvents.bind(this);
-		this.fetchEventsForCalendar = this.fetchEventsForCalendar.bind(this);
-		this.setCalendarFetchError = this.setCalendarFetchError.bind(this);
-	}
-
-	setAccessToken(accessToken) {
+	setAccessToken = accessToken => {
 		this.setState({
 			accessToken: accessToken,
 		});
 
 		this.fetchCalendars();
-	}
+	};
 
-	fetchCalendars() {
+	fetchCalendars = () => {
 		window.gapi.client
 			.request({
 				path:
 					'https://www.googleapis.com/calendar/v3/users/me/calendarList',
 			})
 			.then(response => this.receiveCalendars(response.result.items));
-	}
+	};
 
-	fetchEvents() {
+	fetchEvents = () => {
 		this.getSelectedCalendarIds().forEach(calendarId =>
 			this.fetchEventsForCalendar(calendarId, ''),
 		);
-	}
+	};
 
-	fetchEventsForCalendar(calendarId, nextPageToken) {
+	fetchEventsForCalendar = (calendarId, nextPageToken) => {
 		if (nextPageToken === undefined) return;
 
 		window.gapi.client
@@ -70,9 +60,9 @@ class App extends Component {
 				console.error(`${calendarId}:`, response);
 				this.setCalendarFetchError(calendarId);
 			});
-	}
+	};
 
-	setCalendarFetchError(calendarId) {
+	setCalendarFetchError = calendarId => {
 		const { calendars } = this.state;
 		const calendar = calendars[calendarId];
 
@@ -85,16 +75,16 @@ class App extends Component {
 				},
 			},
 		});
-	}
+	};
 
-	receiveCalendars(calendars) {
+	receiveCalendars = calendars => {
 		this.setState(
 			{ calendars: arrayToObject(calendars) },
 			this.fetchEvents,
 		);
-	}
+	};
 
-	receiveEvents(newEvents, calendarId, nextPageToken) {
+	receiveEvents = (newEvents, calendarId, nextPageToken) => {
 		const { events } = this.state;
 		let eventsForCalendar;
 
@@ -113,7 +103,7 @@ class App extends Component {
 			},
 			() => this.fetchEventsForCalendar(calendarId, nextPageToken),
 		);
-	}
+	};
 
 	getSelectedCalendarIds() {
 		const { calendars } = this.state;
@@ -138,7 +128,7 @@ class App extends Component {
 		return selectedEvents;
 	}
 
-	toggleCalendar(calendarId) {
+	toggleCalendar = calendarId => {
 		const { calendars, events } = this.state;
 
 		this.setState(
@@ -157,7 +147,7 @@ class App extends Component {
 				this.fetchEventsForCalendar(calendarId, '');
 			},
 		);
-	}
+	};
 
 	render() {
 		window.state = this.state;
